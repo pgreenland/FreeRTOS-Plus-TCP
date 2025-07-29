@@ -1768,7 +1768,7 @@ static BaseType_t prvAcceptPacket( const NetworkBufferDescriptor_t * const pxDes
             #endif
 
             /* TODO: Create a eConsiderPacketForProcessing */
-            if( eConsiderPacketForProcessing( pxDescriptor->pucEthernetBuffer ) != eProcessBuffer )
+            if( eConsiderFrameForProcessing( pxDescriptor->pucEthernetBuffer ) != eProcessBuffer )
             {
                 iptraceETHERNET_RX_EVENT_LOST();
                 FreeRTOS_debug_printf( ( "prvAcceptPacket: Packet discarded\n" ) );
