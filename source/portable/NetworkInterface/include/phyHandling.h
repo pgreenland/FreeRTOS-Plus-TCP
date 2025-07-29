@@ -62,7 +62,7 @@
         uint8_t ucSpeed;
         uint8_t ucMDI_X; /* MDI-X : Medium Dependent Interface - Crossover */
         uint8_t ucDuplex;
-        uint8_t ucSpare;
+        uint8_t ucMasterSlave; /* T1 master or slave mode */
     } PhyProperties_t;
 
     typedef struct xEthernetPhy
@@ -98,6 +98,10 @@
     #define PHY_DUPLEX_HALF        1
     #define PHY_DUPLEX_FULL        2
     #define PHY_DUPLEX_AUTO        3
+
+/* Values for PhyProperties_t::ucMasterSlave : */
+    #define PHY_MASTER              1
+    #define PHY_SLAVE               2
 
 /* ID's of supported PHY's : */
     #define PHY_ID_LAN8742A        0x0007c130

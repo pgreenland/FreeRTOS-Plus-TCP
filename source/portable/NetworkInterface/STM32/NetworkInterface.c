@@ -99,7 +99,7 @@
 #define niEMAC_TX_MUTEX_NAME              "EMAC_TxMutex"
 #define niEMAC_TX_DESC_SEM_NAME           "EMAC_TxDescSem"
 
-#define niEMAC_AUTO_NEGOTIATION           ipconfigENABLE
+#define niEMAC_AUTO_NEGOTIATION           ipconfigDISABLE
 #define niEMAC_USE_100MB                  ( ipconfigENABLE && ipconfigIS_DISABLED( niEMAC_AUTO_NEGOTIATION ) )
 #define niEMAC_USE_FULL_DUPLEX            ( ipconfigENABLE && ipconfigIS_DISABLED( niEMAC_AUTO_NEGOTIATION ) )
 #define niEMAC_AUTO_CROSS                 ( ipconfigENABLE && ipconfigIS_ENABLED( niEMAC_AUTO_NEGOTIATION ) )
@@ -1314,12 +1314,17 @@ static BaseType_t prvPhyStart( ETH_HandleTypeDef * pxEthHandle,
             #else
                 .ucMDI_X  = PHY_MDIX_DIRECT,
             #endif
+
+            /* T1 master or slave mode */
+            .ucMasterSlave = PHY_MASTER,
         };
 
         #if ipconfigIS_DISABLED( niEMAC_AUTO_NEGOTIATION )
             pxPhyObject->xPhyPreferences.ucSpeed = xPhyProperties.ucSpeed;
             pxPhyObject->xPhyPreferences.ucDuplex = xPhyProperties.ucDuplex;
         #endif
+
+        pxPhyObject->xPhyPreferences.ucMasterSlave = xPhyProperties.ucMasterSlave;
 
         if( xPhyConfigure( pxPhyObject, &xPhyProperties ) == 0 )
         {

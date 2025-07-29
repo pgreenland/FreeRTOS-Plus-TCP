@@ -75,12 +75,16 @@
 #define phyREG_01_BMSR             0x01U    /* Basic Mode Status Register. */
 #define phyREG_02_PHYSID1          0x02U    /* PHYS ID 1 */
 #define phyREG_03_PHYSID2          0x03U    /* PHYS ID 2 */
+#if 0
 #define phyREG_04_ADVERTISE        0x04U    /* Advertisement control reg */
+#endif
 
 /* Naming and numbering of extended PHY registers. */
 #define PHYREG_10_PHYSTS           0x10U    /* 16 PHY status register Offset */
 #define phyREG_19_PHYCR            0x19U    /* 25 RW PHY Control Register */
 #define phyREG_1F_PHYSPCS          0x1FU    /* 31 RW PHY Special Control Status */
+
+#define phyREG_834_MMD1_PMA_CTRL_2  0x834U   /* MMD1 PMA Control 2 Register */
 
 /* Bit fields for 'phyREG_00_BMCR', the 'Basic Mode Control Register'. */
 #define phyBMCR_FULL_DUPLEX        0x0100U  /* Full duplex. */
@@ -112,6 +116,7 @@
 #define phyPHYSPCS_SPEED_10        0x0004U
 #define phyPHYSPCS_FULL_DUPLEX     0x0010U
 
+#if 0
 /*
  * Description of all capabilities that can be advertised to
  * the peer (usually a switch or router).
@@ -127,11 +132,17 @@
     ( phyADVERTISE_10HALF | phyADVERTISE_10FULL |   \
       phyADVERTISE_100HALF | phyADVERTISE_100FULL | \
       phyADVERTISE_CSMA )
+#endif
+
+/* Bits for PMA control register */
+#define phyPMACTRL2_MASTER_MODE      0xC000U /* Master mode */
+#define phyPMACTRL2_SLAVE_MODE       0x8000U /* Slave mode */
 
 /* Send a reset command to a set of PHY-ports. */
 static uint32_t xPhyReset( EthernetPhy_t * pxPhyObject,
                            uint32_t ulPhyMask );
 
+#if 0
 static BaseType_t xHas_1F_PHYSPCS( uint32_t ulPhyID )
 {
     BaseType_t xResult = pdFALSE;
@@ -164,8 +175,10 @@ static BaseType_t xHas_1F_PHYSPCS( uint32_t ulPhyID )
 
     return xResult;
 }
+#endif
 /*-----------------------------------------------------------*/
 
+#if 0
 static BaseType_t xHas_19_PHYCR( uint32_t ulPhyID )
 {
     BaseType_t xResult = pdFALSE;
@@ -186,6 +199,28 @@ static BaseType_t xHas_19_PHYCR( uint32_t ulPhyID )
 
     return xResult;
 }
+#endif
+
+/*-----------------------------------------------------------*/
+
+#define PHY_DEVAD_EXTENDED (0x1F)
+#define PHY_DEVAD_MMD1 (0x01)
+
+static void vPhyIndirectWrite(EthernetPhy_t * pxPhyObject,
+                              BaseType_t xPhyAddress,
+                              uint16_t ulDevAddr,
+                              uint16_t ulRegister,
+                              uint16_t ulValue)
+{
+    /* Write address */
+    pxPhyObject->fnPhyWrite(xPhyAddress, 0x0DU, ulDevAddr);
+    pxPhyObject->fnPhyWrite(xPhyAddress, 0x0EU, ulRegister);
+
+    /* Write value */
+    pxPhyObject->fnPhyWrite(xPhyAddress, 0x0DU, 0x4000U | ulDevAddr);
+    pxPhyObject->fnPhyWrite(xPhyAddress, 0x0EU, ulValue);
+}
+
 /*-----------------------------------------------------------*/
 
 /* Initialise the struct and assign a PHY-read and -write function. */
@@ -322,7 +357,9 @@ static uint32_t xPhyReset( EthernetPhy_t * pxPhyObject,
 BaseType_t xPhyConfigure( EthernetPhy_t * pxPhyObject,
                           const PhyProperties_t * pxPhyProperties )
 {
+    #if 0
     uint32_t ulConfig, ulAdvertise;
+    #endif
     BaseType_t xPhyIndex;
 
     if( pxPhyObject->xPortCount < 1 )
@@ -335,6 +372,7 @@ BaseType_t xPhyConfigure( EthernetPhy_t * pxPhyObject,
     /* The expected ID for the 'LAN8720'   is 0x0007c0f0. */
     /* The expected ID for the 'DP83848I'  is 0x20005C90. */
 
+    #if 0
     /* Set advertise register. */
     if( ( pxPhyProperties->ucSpeed == ( uint8_t ) PHY_SPEED_AUTO ) && ( pxPhyProperties->ucDuplex == ( uint8_t ) PHY_DUPLEX_AUTO ) )
     {
@@ -391,10 +429,12 @@ BaseType_t xPhyConfigure( EthernetPhy_t * pxPhyObject,
             }
         }
     }
+    #endif
 
     /* Send a reset command to a set of PHY-ports. */
     xPhyReset( pxPhyObject, xPhyGetMask( pxPhyObject ) );
 
+    #if 0
     for( xPhyIndex = 0; xPhyIndex < pxPhyObject->xPortCount; xPhyIndex++ )
     {
         BaseType_t xPhyAddress = pxPhyObject->ucPhyIndexes[ xPhyIndex ];
@@ -477,6 +517,13 @@ BaseType_t xPhyConfigure( EthernetPhy_t * pxPhyObject,
     /* Keep these values for later use. */
     pxPhyObject->ulBCRValue = ulConfig & ~phyBMCR_ISOLATE;
     pxPhyObject->ulACRValue = ulAdvertise;
+    #endif
+
+    for( xPhyIndex = 0; xPhyIndex < pxPhyObject->xPortCount; xPhyIndex++ )
+    {
+        BaseType_t xPhyAddress = pxPhyObject->ucPhyIndexes[ xPhyIndex ];
+        (void)xPhyAddress; /* Prevent unused variable warning. */
+    }
 
     return 0;
 }
@@ -489,6 +536,74 @@ BaseType_t xPhyConfigure( EthernetPhy_t * pxPhyObject,
 BaseType_t xPhyFixedValue( EthernetPhy_t * pxPhyObject,
                            uint32_t ulPhyMask )
 {
+#if 1
+    BaseType_t xPhyIndex;
+    uint32_t ulBitMask = ( uint32_t ) 1U;
+    uint32_t ulDoneMask;
+    uint32_t ulRegValue;
+    TickType_t xRemainingTime;
+    TimeOut_t xTimer;
+
+    /* Decide on master / slave mode */
+    uint16_t uiT1Mode = pxPhyObject->xPhyPreferences.ucMasterSlave == PHY_MASTER ?
+                        phyPMACTRL2_MASTER_MODE : phyPMACTRL2_SLAVE_MODE;
+
+    for( xPhyIndex = 0; xPhyIndex < pxPhyObject->xPortCount; xPhyIndex++, ulBitMask <<= 1 )
+    {
+        if( ( ulPhyMask & ulBitMask ) != 0lu )
+        {
+            BaseType_t xPhyAddress = pxPhyObject->ucPhyIndexes[ xPhyIndex ];
+
+            /* Set T1 mode */
+            vPhyIndirectWrite(pxPhyObject,
+                              xPhyAddress,
+                               PHY_DEVAD_MMD1,
+                               phyREG_834_MMD1_PMA_CTRL_2,
+                               uiT1Mode);
+        }
+    }
+
+    xRemainingTime = ( TickType_t ) pdMS_TO_TICKS( phyPHY_MAX_NEGOTIATE_TIME_MS );
+    vTaskSetTimeOutState( &xTimer );
+    ulDoneMask = 0;
+
+    /* Wait for link (repurposing auto-negation timeout) */
+    for (;;)
+    {
+        ulBitMask = ( uint32_t ) 1U;
+        for( xPhyIndex = 0; xPhyIndex < ( uint32_t ) pxPhyObject->xPortCount; xPhyIndex++, ulBitMask <<= 1 )
+        {
+            if( ( ulPhyMask & ulBitMask ) != 0lu )
+            {
+                if( ( ulDoneMask & ulBitMask ) == 0lu )
+                {
+                    BaseType_t xPhyAddress = pxPhyObject->ucPhyIndexes[ xPhyIndex ];
+
+                    pxPhyObject->fnPhyRead( xPhyAddress, phyREG_01_BMSR, &ulRegValue );
+
+                    if( ( ulRegValue & phyBMSR_LINK_STATUS ) != 0U )
+                    {
+                        pxPhyObject->ulLinkStatusMask |= ulBitMask;
+                        ulDoneMask |= ulBitMask;
+                    }
+                }
+            }
+        }
+
+        if( ulPhyMask == ulDoneMask )
+        {
+            break;
+        }
+
+        if( xTaskCheckForTimeOut( &xTimer, &xRemainingTime ) != pdFALSE )
+        {
+            FreeRTOS_printf( ( "xPhyFixedValue: Initial link timed out ( done 0x%02X )\n", ( unsigned int ) ulDoneMask ) );
+            break;
+        }
+
+        vTaskDelay( pdMS_TO_TICKS( phySHORT_DELAY_MS ) );
+    }
+#else
     BaseType_t xPhyIndex;
     uint32_t ulValue, ulBitMask = ( uint32_t ) 1U;
 
@@ -514,6 +629,7 @@ BaseType_t xPhyFixedValue( EthernetPhy_t * pxPhyObject,
             pxPhyObject->fnPhyWrite( xPhyAddress, phyREG_00_BMCR, ulValue );
         }
     }
+#endif
 
     return 0;
 }
@@ -525,6 +641,10 @@ BaseType_t xPhyFixedValue( EthernetPhy_t * pxPhyObject,
 BaseType_t xPhyStartAutoNegotiation( EthernetPhy_t * pxPhyObject,
                                      uint32_t ulPhyMask )
 {
+#if 1
+    (void)pxPhyObject; /* Prevent unused variable warning. */
+    (void)ulPhyMask; /* Prevent unused variable warning. */
+#else
     uint32_t xPhyIndex, ulDoneMask, ulBitMask;
     uint32_t ulRegValue;
     TickType_t xRemainingTime;
@@ -730,6 +850,7 @@ BaseType_t xPhyStartAutoNegotiation( EthernetPhy_t * pxPhyObject,
             }
         }
     } /* if( ulDoneMask != ( uint32_t) 0U ) */
+#endif
 
     return 0;
 }
