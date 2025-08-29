@@ -3893,6 +3893,7 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t * pxSocket )
                                                     socklen_t * pxAddressLength )
     {
         FreeRTOS_Socket_t * pxClientSocket = NULL;
+        UBaseType_t bAccepted = pdFALSE_UNSIGNED; // PG: Need to move printf outside of section with scheduler suspended
 
         /* Is there a new client? */
         vTaskSuspendAll();
@@ -3903,8 +3904,12 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t * pxSocket )
 
                 if( pxClientSocket != NULL )
                 {
+                    #if 0 // PG
                     FreeRTOS_printf( ( "prvAcceptWaitClient: client %p parent %p\n",
                                        ( void * ) pxClientSocket, ( void * ) pxParentSocket ) );
+                    #else
+                    bAccepted = pdTRUE_UNSIGNED;
+                    #endif
                 }
             }
             else
@@ -3934,6 +3939,13 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t * pxSocket )
 
         if( pxClientSocket != NULL )
         {
+            // PG: Move printf here, out of critical section
+            if( bAccepted != pdFALSE_UNSIGNED )
+            {
+                FreeRTOS_printf( ( "prvAcceptWaitClient: client %p parent %p\n",
+                                   ( void * ) pxClientSocket, ( void * ) pxParentSocket ) );
+            }
+
             if( pxAddressLength != NULL )
             {
                 *pxAddressLength = sizeof( struct freertos_sockaddr );
