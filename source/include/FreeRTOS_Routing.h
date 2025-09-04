@@ -110,6 +110,9 @@
                 bCallDownEvent : 1;           /**< The down-event must be called. */
         } bits;                               /**< A collection of boolean flags. */
 
+        // PG: Network option to be applied to phy at startup
+        BaseType_t bPhyMasterMode;            /**< true: PHY is in master mode, false: PHY is in slave mode. */
+
         struct xNetworkEndPoint * pxEndPoint; /**< A list of end-points bound to this interface. */
         struct xNetworkInterface * pxNext;    /**< The next interface in a linked list. */
     } NetworkInterface_t;

@@ -1315,8 +1315,8 @@ static BaseType_t prvPhyStart( ETH_HandleTypeDef * pxEthHandle,
                 .ucMDI_X  = PHY_MDIX_DIRECT,
             #endif
 
-            /* T1 master or slave mode */
-            .ucMasterSlave = PHY_MASTER,
+             /* PG: T1 master or slave mode */
+            .ucMasterSlave = pxInterface->bPhyMasterMode ? PHY_MASTER : PHY_SLAVE,
         };
 
         #if ipconfigIS_DISABLED( niEMAC_AUTO_NEGOTIATION )
@@ -1324,6 +1324,7 @@ static BaseType_t prvPhyStart( ETH_HandleTypeDef * pxEthHandle,
             pxPhyObject->xPhyPreferences.ucDuplex = xPhyProperties.ucDuplex;
         #endif
 
+        /* PG: T1 master or slave mode */
         pxPhyObject->xPhyPreferences.ucMasterSlave = xPhyProperties.ucMasterSlave;
 
         if( xPhyConfigure( pxPhyObject, &xPhyProperties ) == 0 )
