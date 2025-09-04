@@ -148,11 +148,19 @@
     #endif
 
     #if ( ipconfigUSE_TCP == 1 )
-        #define FREERTOS_SO_SET_LOW_HIGH_WATER            ( 18 )
+        #define FREERTOS_SO_SET_LOW_HIGH_WATER    ( 18 )
     #endif
-    #define FREERTOS_INADDR_ANY                           ( 0U ) /* The 0.0.0.0 IPv4 address. */
 
-    #if ( 0 )                                                    /* Not Used */
+    #if ( ipconfigIS_ENABLED( ipconfigSUPPORT_IP_MULTICAST ) )
+        #define FREERTOS_SO_IP_MULTICAST_TTL              ( 19 ) /* TTL value to me used when sending multicast packets. Defaults to ipconfigMULTICAST_DEFAULT_TTL */
+        #define FREERTOS_SO_IP_ADD_MEMBERSHIP             ( 20 ) /* Mark the socket as able to receive multicast messages from a multicast group address */
+        #define FREERTOS_SO_IP_DROP_MEMBERSHIP            ( 21 ) /* Remove membership from a multicast group address */
+    #endif /* ipconfigIS_ENABLED( ipconfigSUPPORT_IP_MULTICAST ) */
+
+    #define FREERTOS_INADDR_ANY                           ( 0U )           /* The 0.0.0.0 IPv4 address. */
+    #define FREERTOS_INADDR_BROADCAST                     ( 0xffffffffUL ) /* 255.255.255.255 is a special broadcast address that represents all host attached to the physical network. */
+
+    #if ( 0 )                                                              /* Not Used */
         #define FREERTOS_NOT_LAST_IN_FRAGMENTED_PACKET    ( 0x80 )
         #define FREERTOS_FRAGMENTED_PACKET                ( 0x40 )
     #endif

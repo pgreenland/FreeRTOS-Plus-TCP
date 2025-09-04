@@ -308,7 +308,7 @@
  * Type: TickType_t
  * Unit: milliseconds
  * Minimum: 0
- * Maximum: portMAX_DELAY * portTICK_PERIOD_MS
+ * Maximum: ( portMAX_DELAY / configTICK_RATE_HZ ) * 1000
  *
  * Sets the timeout to wait for a response to a router
  * solicitation message.
@@ -322,7 +322,7 @@
     #error ipconfigRA_SEARCH_TIME_OUT_MSEC must be at least 0
 #endif
 
-STATIC_ASSERT( ipconfigRA_SEARCH_TIME_OUT_MSEC <= ( portMAX_DELAY * portTICK_PERIOD_MS ) );
+STATIC_ASSERT( pdMS_TO_TICKS( ipconfigRA_SEARCH_TIME_OUT_MSEC ) <= portMAX_DELAY );
 
 /*---------------------------------------------------------------------------*/
 
@@ -357,7 +357,7 @@ STATIC_ASSERT( ipconfigRA_SEARCH_TIME_OUT_MSEC <= ( portMAX_DELAY * portTICK_PER
  * Type: TickType_t
  * Unit: milliseconds
  * Minimum: 0
- * Maximum: portMAX_DELAY * portTICK_PERIOD_MS
+ * Maximum: ( portMAX_DELAY / configTICK_RATE_HZ ) * 1000
  *
  * Sets the timeout to wait for a response to a neighbour solicitation message.
  */
@@ -370,7 +370,7 @@ STATIC_ASSERT( ipconfigRA_SEARCH_TIME_OUT_MSEC <= ( portMAX_DELAY * portTICK_PER
     #error ipconfigRA_IP_TEST_TIME_OUT_MSEC must be at least 0
 #endif
 
-STATIC_ASSERT( ipconfigRA_IP_TEST_TIME_OUT_MSEC <= ( portMAX_DELAY * portTICK_PERIOD_MS ) );
+STATIC_ASSERT( pdMS_TO_TICKS( ipconfigRA_IP_TEST_TIME_OUT_MSEC ) <= portMAX_DELAY );
 
 /*---------------------------------------------------------------------------*/
 
@@ -1726,8 +1726,7 @@ STATIC_ASSERT( ipconfigTCP_KEEP_ALIVE_INTERVAL <= ( portMAX_DELAY / configTICK_R
  * network buffers are themselves blocked waiting for a network buffer.
  *
  * ipconfigUDP_MAX_SEND_BLOCK_TIME_TICKS is specified in RTOS ticks. A time in
- * milliseconds can be converted to a time in ticks by dividing the time in
- * milliseconds by portTICK_PERIOD_MS.
+ * milliseconds can be converted to a time in ticks using pdMS_TO_TICKS().
  */
 
 #ifndef ipconfigUDP_MAX_SEND_BLOCK_TIME_TICKS
@@ -2151,10 +2150,33 @@ STATIC_ASSERT( ipconfigSOCK_DEFAULT_SEND_BLOCK_TIME <= portMAX_DELAY );
     #define vPortFreeSocket( ptr )    vPortFree( ptr )
 #endif
 
+/*===========================================================================*/
+/*                              SOCKET CONFIG                                */
+/*===========================================================================*/
+/*---------------------------------------------------------------------------*/
+/*===========================================================================*/
+/*---------------------------------------------------------------------------*/
+/*===========================================================================*/
+/*                          STREAM BUFFER CONFIG                             */
+/*===========================================================================*/
+
+/*---------------------------------------------------------------------------*/
+
+/*
+ * pvPortMemCpyStreamBuffer
+ *
+ * Function to copy data into the stream buffer when sending
+ * and copy data from the stream buffer when receiving.
+ */
+
+#ifndef pvPortMemCpyStreamBuffer
+    #define pvPortMemCpyStreamBuffer( dst, src, count )    memcpy( dst, src, count )
+#endif
+
 /*---------------------------------------------------------------------------*/
 
 /*===========================================================================*/
-/*                              SOCKET CONFIG                                */
+/*                          STREAM BUFFER CONFIG                             */
 /*===========================================================================*/
 /*---------------------------------------------------------------------------*/
 /*===========================================================================*/
@@ -3430,6 +3452,62 @@ STATIC_ASSERT( ipconfigDNS_SEND_BLOCK_TIME_TICKS <= portMAX_DELAY );
 
 #ifndef ipconfigISO_STRICTNESS_VIOLATION_END
     #define ipconfigISO_STRICTNESS_VIOLATION_END
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+ * ipconfigSUPPORT_IP_MULTICAST
+ *
+ * Type: BaseType_t ( ipconfigENABLE | ipconfigDISABLE )
+ *
+ * When set to ipconfigENABLE, this macro will
+ * enable the reception of multicast groups addresses. When enabled,
+ * It is highly recommended to enable ipconfigETHERNET_DRIVER_FILTERS_FRAME_TYPES
+ * and use a network driver that supports MAC filtering through the
+ * pfAddAllowedMAC/pfRemoveAllowedMAC functions.
+ */
+#ifndef ipconfigSUPPORT_IP_MULTICAST
+    #define ipconfigSUPPORT_IP_MULTICAST    ipconfigDISABLE
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+ * ipconfigPERIODIC_MULTICAST_REPORT_INTERVAL
+ *
+ * Type: BaseType_t
+ * Unit: count of igmpMULTICAST_EVENT_PERIOD_MS
+ *
+ * When set to -1, no periodic unsolicited multicast reports are sent out.
+ * This is the correct behavior. For debug purposes, set to > 0 to cause
+ * periodic sending of multicast reports even if there are no IGMP/MLD
+ * queries heard. Example: 150 = 15.0 seconds.
+ * Note: Maybe remove that ?
+ */
+#ifndef ipconfigPERIODIC_MULTICAST_REPORT_INTERVAL
+    #define ipconfigPERIODIC_MULTICAST_REPORT_INTERVAL    ( -1 )
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+/*
+ * ipconfigMULTICAST_DEFAULT_TTL
+ *
+ * Type: uint8_t
+ * Unit: 'hops'
+ * Minimum: 0
+ *
+ * Specifies the TTL value that will be used for multicast
+ * UDP packets by default. Can be overridden per socket by
+ * setting the FREERTOS_SO_IP_MULTICAST_TTL socket option or by
+ * setting the FREERTOS_SO_IPV6_MULTICAST_HOPS in case of an IPv6 socket.
+ * Please note that in certain situations, RFCs or standards may require
+ * a certain value to be used,like in Neighbor Solicitation where the hop
+ * limit field must be set to 255. In those cases, the value is hard-coded
+ * instead of being controlled by this define. */
+#ifndef ipconfigMULTICAST_DEFAULT_TTL
+    #define ipconfigMULTICAST_DEFAULT_TTL    ( 1 )
 #endif
 
 /*---------------------------------------------------------------------------*/
