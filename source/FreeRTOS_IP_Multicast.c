@@ -343,12 +343,17 @@ void prvScheduleMulticastReports( BaseType_t xIsIPv6,
             /* IPv6 MLD */
             pxIPv6_GroupAddress = ( const IPv6_Address_t * ) pvGroupAddress;
 
+            #if ( ipconfigUSE_IPv6 != 0 )
             /* Skip ahead for specific queries that do not match this report's address. */
             if( ( memcmp( pxIPv6_GroupAddress->ucBytes, FreeRTOS_in6addr_any.ucBytes, sizeof( IPv6_Address_t ) ) != 0 ) &&
                 ( ( memcmp( pxIPv6_GroupAddress->ucBytes, pxMRD->xMCastGroupAddress.xIPAddress.xIP_IPv6.ucBytes, ipSIZE_OF_IPv6_ADDRESS ) ) != 0 ) )
             {
                 continue;
             }
+            #else
+                /* IPv6 is disabled, should not have come here. */
+                continue;
+            #endif /* if ( ipconfigUSE_IPv6 != 0 ) */
 
             /* Lastly, only reschedule if the report is for all interfaces or the interface that this query arrived on. */
             if( ( pxMRD->pxInterface == NULL ) || ( pxMRD->pxInterface == pxInterface ) )
