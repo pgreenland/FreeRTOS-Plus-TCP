@@ -2314,3 +2314,16 @@ NetworkInterface_t * pxSTM32_FillInterfaceDescriptor( BaseType_t xEMACIndex,
 #endif /* if 0 */
 
 /*---------------------------------------------------------------------------*/
+
+// PG: Allow callers to check if a Tx descriptor is available within a given time before generating a packet
+BaseType_t NETWORK_INTERFACE_STM32_CheckForFreeTxDesc(TickType_t xTicksToWait)
+{
+    BaseType_t xResult = xSemaphoreTake(xTxDescSem, xTicksToWait);
+    if (pdTRUE == xResult)
+    {
+        /* Return the semaphore as this function only checks for availability */
+        xSemaphoreGive( xTxDescSem );
+    }
+
+    return xResult;
+}
