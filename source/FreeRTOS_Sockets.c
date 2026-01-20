@@ -5655,7 +5655,12 @@ void vSocketWakeUpUser( FreeRTOS_Socket_t * pxSocket )
         const FreeRTOS_Socket_t * pxSocket = ( const FreeRTOS_Socket_t * ) xSocket;
         BaseType_t xReturn;
 
-        if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
+        // PG: Support UDP sockets as well based on commented out FreeRTOS_udp_rx_size()
+        if( pxSocket->ucProtocol == ( uint8_t ) FREERTOS_IPPROTO_UDP )
+        {
+            xReturn = ( BaseType_t ) listCURRENT_LIST_LENGTH( &( pxSocket->u.xUDP.xWaitingPacketsList ) );
+        }
+        else if( pxSocket->ucProtocol != ( uint8_t ) FREERTOS_IPPROTO_TCP )
         {
             xReturn = -pdFREERTOS_ERRNO_EINVAL;
         }
