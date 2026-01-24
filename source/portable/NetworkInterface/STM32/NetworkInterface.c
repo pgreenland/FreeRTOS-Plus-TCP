@@ -424,6 +424,9 @@ static uint8_t uxMACEntryIndex = 0;
 static uint32_t ulHashTable[ niEMAC_ADDRESS_HASH_BITS / 32 ];
 static uint8_t ucAddrHashCounters[ niEMAC_ADDRESS_HASH_BITS ] = { 0U };
 
+// PG: Track if RX allocation has failed
+static BaseType_t xRXAllocFailed = pdFALSE;
+
 /*---------------------------------------------------------------------------*/
 /*===========================================================================*/
 /*                              Phy Hooks                                    */
@@ -859,6 +862,16 @@ static portTASK_FUNCTION( prvEMACHandlerTask, pvParameters )
 
             /* if( ( ulISREvents & eMacEventErrMac ) != 0 ) */
             /* if( ( ulISREvents & eMacEventErrDma ) != 0 ) */
+        }
+
+        // PG: Retry RX if allocation previously failed
+        if (pdTRUE == xRXAllocFailed)
+        {
+            // Clear flag expecting success
+            xRXAllocFailed = pdFALSE;
+
+            // Try to receive packets again - which will attempt to allocate RX buffers and advance DMA ring restarting RX
+            xResult |= prvNetworkInterfaceInput( pxEthHandle, pxInterface );
         }
 
         if( xPhyCheckLinkStatus( pxPhyObject, xResult ) != pdFALSE )
@@ -1912,6 +1925,9 @@ void HAL_ETH_RxAllocateCallback( uint8_t ** ppucBuff )
     else
     {
         FreeRTOS_debug_printf( ( "HAL_ETH_RxAllocateCallback: failed\n" ) );
+
+        // PG: Flag allocation failure
+        xRXAllocFailed = pdTRUE;
     }
 }
 
