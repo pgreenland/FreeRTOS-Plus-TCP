@@ -874,6 +874,9 @@ static portTASK_FUNCTION( prvEMACHandlerTask, pvParameters )
             xResult |= prvNetworkInterfaceInput( pxEthHandle, pxInterface );
         }
 
+        // PG: Periodically query phy status
+        xPhyGetStats( pxPhyObject );
+
         if( xPhyCheckLinkStatus( pxPhyObject, xResult ) != pdFALSE )
         {
             if( prvGetPhyLinkStatus( pxInterface ) != pdFALSE )
@@ -2040,6 +2043,12 @@ NetworkInterface_t * pxSTM32_FillInterfaceDescriptor( BaseType_t xEMACIndex,
     pxInterface->pfRemoveAllowedMAC = prvRemoveAllowedMACAddress;
 
     return FreeRTOS_AddNetworkInterface( pxInterface );
+}
+
+// PG: Gain access to phy status
+EthernetPhy_t * pxSTM32_GetPhyObject(void)
+{
+    return &xPhyObject;
 }
 
 /*---------------------------------------------------------------------------*/

@@ -205,8 +205,8 @@ static BaseType_t xHas_19_PHYCR( uint32_t ulPhyID )
 
 /*-----------------------------------------------------------*/
 
-#define PHY_DEVAD_EXTENDED (0x1F)
 #define PHY_DEVAD_MMD1 (0x01)
+#define PHY_DEVAD_MMD1F (0x1F)
 
 static void vPhyIndirectWrite(EthernetPhy_t * pxPhyObject,
                               BaseType_t xPhyAddress,
@@ -221,6 +221,24 @@ static void vPhyIndirectWrite(EthernetPhy_t * pxPhyObject,
     /* Write value */
     pxPhyObject->fnPhyWrite(xPhyAddress, 0x0DU, 0x4000U | ulDevAddr);
     pxPhyObject->fnPhyWrite(xPhyAddress, 0x0EU, ulValue);
+}
+
+// PG: Add support for indirect read commands
+static void vPhyIndirectRead(EthernetPhy_t * pxPhyObject,
+                             BaseType_t xPhyAddress,
+                             uint16_t ulDevAddr,
+                             uint16_t ulRegister,
+                             uint16_t *pulValue)
+{
+    /* Write address */
+    pxPhyObject->fnPhyWrite(xPhyAddress, 0x0DU, ulDevAddr);
+    pxPhyObject->fnPhyWrite(xPhyAddress, 0x0EU, ulRegister);
+
+    /* Read value */
+    pxPhyObject->fnPhyWrite(xPhyAddress, 0x0DU, 0x4000U | ulDevAddr);
+    uint32_t uiTmpValue;
+    pxPhyObject->fnPhyRead(xPhyAddress, 0x0EU, &uiTmpValue);
+    *pulValue = (uint16_t)uiTmpValue;
 }
 
 /*-----------------------------------------------------------*/
@@ -934,3 +952,28 @@ BaseType_t xPhyCheckLinkStatus( EthernetPhy_t * pxPhyObject,
     return xNeedCheck;
 }
 /*-----------------------------------------------------------*/
+
+// PG: Monitor phy status
+void xPhyGetStats( EthernetPhy_t * pxPhyObject )
+{
+    TickType_t xTimeNow = xTaskGetTickCount();
+
+    if ( ( xTimeNow - pxPhyObject->xLastLinkStatusTime ) >= pdMS_TO_TICKS( 1000U ) )
+    {
+        BaseType_t xPhyAddress = pxPhyObject->ucPhyIndexes[ 0 ];
+
+        /* Read status registers */
+        uint16_t uiSNRResults;
+        uint16_t uiSQIResults;
+        vPhyIndirectRead( pxPhyObject, xPhyAddress, PHY_DEVAD_MMD1F, 0x197, &uiSNRResults );
+        vPhyIndirectRead( pxPhyObject, xPhyAddress, PHY_DEVAD_MMD1F, 0x198, &uiSQIResults );
+
+        /* Extract relevant bits */
+        pxPhyObject->uiLinkSNR = uiSNRResults / 10U;
+        pxPhyObject->uiLinkSQS = (uiSQIResults >> 8U) & 0x03U;
+        pxPhyObject->uiLinkSQI = (uiSQIResults & 0xFFU);
+
+        /* Update last query time */
+        pxPhyObject->xLastLinkStatusTime = xTimeNow;
+    }
+}

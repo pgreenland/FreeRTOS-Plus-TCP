@@ -79,6 +79,13 @@
         uint32_t ulLinkStatusMask;
         PhyProperties_t xPhyPreferences;
         PhyProperties_t xPhyProperties;
+
+        // PG: Additional diagnostics from phy
+        TickType_t xLastLinkStatusTime;
+        uint8_t uiLinkSNR;
+        uint8_t uiLinkSQS;
+        uint8_t uiLinkSQI;
+
     } EthernetPhy_t;
 
 /* Some defines used internally here to indicate preferences about speed, MDIX
@@ -147,6 +154,9 @@
  * last call to this function. */
     BaseType_t xPhyCheckLinkStatus( EthernetPhy_t * pxPhyObject,
                                     BaseType_t xHadReception );
+
+// PG: Gain access to phy status
+void xPhyGetStats( EthernetPhy_t * pxPhyObject );
 
 /* Get the bitmask of a given 'EthernetPhy_t'. */
     #define xPhyGetMask( pxPhyObject ) \
