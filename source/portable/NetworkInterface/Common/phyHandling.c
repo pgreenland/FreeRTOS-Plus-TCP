@@ -84,6 +84,8 @@
 #define phyREG_19_PHYCR            0x19U    /* 25 RW PHY Control Register */
 #define phyREG_1F_PHYSPCS          0x1FU    /* 31 RW PHY Special Control Status */
 
+#define phyREG_18B_AUTO_PHY  0x18BU          /* Autonomous PHY Control Register */
+
 #define phyREG_834_MMD1_PMA_CTRL_2  0x834U   /* MMD1 PMA Control 2 Register */
 
 /* Bit fields for 'phyREG_00_BMCR', the 'Basic Mode Control Register'. */
@@ -203,8 +205,8 @@ static BaseType_t xHas_19_PHYCR( uint32_t ulPhyID )
 
 /*-----------------------------------------------------------*/
 
-#define PHY_DEVAD_EXTENDED (0x1F)
 #define PHY_DEVAD_MMD1 (0x01)
+#define PHY_DEVAD_MMD1F (0x1F)
 
 static void vPhyIndirectWrite(EthernetPhy_t * pxPhyObject,
                               BaseType_t xPhyAddress,
@@ -219,6 +221,23 @@ static void vPhyIndirectWrite(EthernetPhy_t * pxPhyObject,
     /* Write value */
     pxPhyObject->fnPhyWrite(xPhyAddress, 0x0DU, 0x4000U | ulDevAddr);
     pxPhyObject->fnPhyWrite(xPhyAddress, 0x0EU, ulValue);
+}
+
+static void vPhyIndirectRead(EthernetPhy_t * pxPhyObject,
+                             BaseType_t xPhyAddress,
+                             uint16_t ulDevAddr,
+                             uint16_t ulRegister,
+                             uint16_t *pulValue)
+{
+    /* Write address */
+    pxPhyObject->fnPhyWrite(xPhyAddress, 0x0DU, ulDevAddr);
+    pxPhyObject->fnPhyWrite(xPhyAddress, 0x0EU, ulRegister);
+
+    /* Read value */
+    pxPhyObject->fnPhyWrite(xPhyAddress, 0x0DU, 0x4000U | ulDevAddr);
+    uint32_t uiTmpValue;
+    pxPhyObject->fnPhyRead(xPhyAddress, 0x0EU, &uiTmpValue);
+    *pulValue = (uint16_t)uiTmpValue;
 }
 
 /*-----------------------------------------------------------*/
@@ -560,6 +579,15 @@ BaseType_t xPhyFixedValue( EthernetPhy_t * pxPhyObject,
                                PHY_DEVAD_MMD1,
                                phyREG_834_MMD1_PMA_CTRL_2,
                                uiT1Mode);
+
+            #if 1
+            /* Enter autonomous mode */
+            vPhyIndirectWrite(pxPhyObject,
+                              xPhyAddress,
+                              PHY_DEVAD_MMD1F,
+                              phyREG_18B_AUTO_PHY,
+                              0x0042U);
+            #endif
         }
     }
 
@@ -925,3 +953,51 @@ BaseType_t xPhyCheckLinkStatus( EthernetPhy_t * pxPhyObject,
     return xNeedCheck;
 }
 /*-----------------------------------------------------------*/
+
+void xPhyGetStats( EthernetPhy_t * pxPhyObject )
+{
+    TickType_t xTimeNow = xTaskGetTickCount();
+
+    if ( ( xTimeNow - pxPhyObject->xLastLinkStatusTime ) >= pdMS_TO_TICKS( 1000U ) )
+    {
+        BaseType_t xPhyAddress = pxPhyObject->ucPhyIndexes[ 0 ];
+
+        /* Read status registers */
+        vPhyIndirectRead( pxPhyObject, xPhyAddress, PHY_DEVAD_MMD1, phyREG_834_MMD1_PMA_CTRL_2, &pxPhyObject->uiLinkMode );
+        vPhyIndirectRead( pxPhyObject, xPhyAddress, PHY_DEVAD_MMD1F, 0x133, &pxPhyObject->uiLinkStatusResults );
+        vPhyIndirectRead( pxPhyObject, xPhyAddress, PHY_DEVAD_MMD1F, 0x197, &pxPhyObject->uiSNRResults );
+        vPhyIndirectRead( pxPhyObject, xPhyAddress, PHY_DEVAD_MMD1F, 0x198, &pxPhyObject->uiSQIResults );
+
+        #if 0
+        uint16_t uiStrapConfig;
+        vPhyIndirectRead( pxPhyObject, xPhyAddress, PHY_DEVAD_MMD1F, 0x467, &uiStrapConfig );
+        FreeRTOS_printf( ( "Strap config: %04X\n", ( unsigned int ) uiStrapConfig ) );
+        #endif
+
+        #if 0
+        FreeRTOS_printf( ( "LM: %04X, LS: %04X, SNR: %04X, SQI: %u\n",
+                            ( unsigned int ) pxPhyObject->uiLinkMode,
+                            ( unsigned int ) pxPhyObject->uiLinkStatusResults,
+                            ( unsigned int ) pxPhyObject->uiSNRResults,
+                            ( unsigned int ) pxPhyObject->uiSQIResults ) );
+        #endif
+
+        /* Extract relevant bits */
+        pxPhyObject->uiLinkModeIsMaster = (pxPhyObject->uiLinkMode >> 14U) & 0x01U;
+        pxPhyObject->uiLinkStatus = (pxPhyObject->uiLinkStatusResults & 0x7U) | ( ( pxPhyObject->uiLinkStatusResults & 0x1000U ) >> 9U );
+        pxPhyObject->uiLinkSNR = pxPhyObject->uiSNRResults / 10U;
+        pxPhyObject->uiLinkSQS = (pxPhyObject->uiSQIResults >> 8U) & 0x03U;
+        pxPhyObject->uiLinkSQI = (pxPhyObject->uiSQIResults & 0xFFU);
+
+        #if 0
+        FreeRTOS_printf( ( "LM: %u, LS: %01X, SNR: %u, SQS: %u, SQI: %u\n",
+                            ( unsigned int ) pxPhyObject->uiLinkModeIsMaster,
+                            ( unsigned int ) pxPhyObject->uiLinkStatus,
+                            ( unsigned int ) pxPhyObject->uiLinkSNR,
+                            ( unsigned int ) pxPhyObject->uiLinkSQS,
+                            ( unsigned int ) pxPhyObject->uiLinkSQI ) );
+        #endif
+
+        pxPhyObject->xLastLinkStatusTime = xTimeNow;
+    }
+}

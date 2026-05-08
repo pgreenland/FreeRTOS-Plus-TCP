@@ -362,7 +362,8 @@ static void prvInitMacAddresses( ETH_HandleTypeDef * pxEthHandle,
 static BaseType_t prvPhyInit( EthernetPhy_t * pxPhyObject );
 static BaseType_t prvPhyStart( ETH_HandleTypeDef * pxEthHandle,
                                NetworkInterface_t * pxInterface,
-                               EthernetPhy_t * pxPhyObject );
+                               EthernetPhy_t * pxPhyObject,
+                               bool bForce );
 
 /* MAC Filtering Helpers */
 static uint32_t prvCalcCrc32( const uint8_t * const pucMACAddr );
@@ -490,6 +491,8 @@ static BaseType_t prvNetworkInterfaceInitialise( NetworkInterface_t * pxInterfac
     ETH_HandleTypeDef * pxEthHandle = &xEthHandle;
     EthernetPhy_t * pxPhyObject = &xPhyObject;
 
+    FreeRTOS_debug_printf( ( "xMacInitStatus: %d\n", xMacInitStatus ) );
+
     switch( xMacInitStatus )
     {
         default:
@@ -520,7 +523,7 @@ static BaseType_t prvNetworkInterfaceInitialise( NetworkInterface_t * pxInterfac
 
         case eMacPhyStart:
 
-            if( prvPhyStart( pxEthHandle, pxInterface, pxPhyObject ) == pdFALSE )
+            if( prvPhyStart( pxEthHandle, pxInterface, pxPhyObject, false ) == pdFALSE )
             {
                 FreeRTOS_debug_printf( ( "prvNetworkInterfaceInitialise: eMacPhyStart failed\n" ) );
                 break;
@@ -809,6 +812,13 @@ static BaseType_t prvNetworkInterfaceInput( ETH_HandleTypeDef * pxEthHandle,
 
 /*---------------------------------------------------------------------------*/
 
+static volatile bool bPhyReset = false;
+
+void ETH_ResetPHY(void)
+{
+    bPhyReset = true;
+}
+
 static portTASK_FUNCTION( prvEMACHandlerTask, pvParameters )
 {
     NetworkInterface_t * pxInterface = ( NetworkInterface_t * ) pvParameters;
@@ -860,6 +870,18 @@ static portTASK_FUNCTION( prvEMACHandlerTask, pvParameters )
             /* if( ( ulISREvents & eMacEventErrMac ) != 0 ) */
             /* if( ( ulISREvents & eMacEventErrDma ) != 0 ) */
         }
+
+        if (bPhyReset)
+        {
+            FreeRTOS_debug_printf( ( "prvEMACHandlerTask: PHY Reset\n" ) );
+            prvPhyStart( pxEthHandle, pxInterface, pxPhyObject, true );
+            prvReleaseTxPacket( pxEthHandle );
+            HAL_ETH_Start_IT( pxEthHandle );
+
+            bPhyReset = false;
+        }
+
+        xPhyGetStats( pxPhyObject );
 
         if( xPhyCheckLinkStatus( pxPhyObject, xResult ) != pdFALSE )
         {
@@ -1291,11 +1313,12 @@ static BaseType_t prvPhyInit( EthernetPhy_t * pxPhyObject )
 
 static BaseType_t prvPhyStart( ETH_HandleTypeDef * pxEthHandle,
                                NetworkInterface_t * pxInterface,
-                               EthernetPhy_t * pxPhyObject )
+                               EthernetPhy_t * pxPhyObject,
+                               bool bForce )
 {
     BaseType_t xResult = pdFALSE;
 
-    if( prvGetPhyLinkStatus( pxInterface ) == pdFALSE )
+    if( prvGetPhyLinkStatus( pxInterface ) == pdFALSE || bForce)
     {
         const PhyProperties_t xPhyProperties =
         {
@@ -2023,6 +2046,11 @@ NetworkInterface_t * pxSTM32_FillInterfaceDescriptor( BaseType_t xEMACIndex,
     pxInterface->pfRemoveAllowedMAC = prvRemoveAllowedMACAddress;
 
     return FreeRTOS_AddNetworkInterface( pxInterface );
+}
+
+EthernetPhy_t * pxSTM32_GetPhyObject(void)
+{
+    return &xPhyObject;
 }
 
 /*---------------------------------------------------------------------------*/

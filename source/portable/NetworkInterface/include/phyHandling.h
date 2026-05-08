@@ -73,12 +73,26 @@
         uint8_t ucPhyIndexes[ ipconfigPHY_MAX_PORTS ];
         TimeOut_t xLinkStatusTimer;
         TickType_t xLinkStatusRemaining;
+        TickType_t xLastLinkStatusTime;
         BaseType_t xPortCount;
         uint32_t ulBCRValue;
         uint32_t ulACRValue;
         uint32_t ulLinkStatusMask;
         PhyProperties_t xPhyPreferences;
         PhyProperties_t xPhyProperties;
+
+        // PG: Temp debug
+        uint16_t uiLinkMode;
+        uint16_t uiLinkStatusResults;
+        uint16_t uiSNRResults;
+        uint16_t uiSQIResults;
+
+        uint8_t uiLinkModeIsMaster;
+        uint8_t uiLinkStatus;
+        uint8_t uiLinkSNR;
+        uint8_t uiLinkSQS;
+        uint8_t uiLinkSQI;
+
     } EthernetPhy_t;
 
 /* Some defines used internally here to indicate preferences about speed, MDIX
@@ -147,6 +161,8 @@
  * last call to this function. */
     BaseType_t xPhyCheckLinkStatus( EthernetPhy_t * pxPhyObject,
                                     BaseType_t xHadReception );
+
+void xPhyGetStats( EthernetPhy_t * pxPhyObject );
 
 /* Get the bitmask of a given 'EthernetPhy_t'. */
     #define xPhyGetMask( pxPhyObject ) \
