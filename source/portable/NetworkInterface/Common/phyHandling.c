@@ -84,6 +84,8 @@
 #define phyREG_19_PHYCR            0x19U    /* 25 RW PHY Control Register */
 #define phyREG_1F_PHYSPCS          0x1FU    /* 31 RW PHY Special Control Status */
 
+#define phyREG_18B_AUTO_PHY  0x18BU          /* Autonomous PHY Control Register */
+
 #define phyREG_834_MMD1_PMA_CTRL_2  0x834U   /* MMD1 PMA Control 2 Register */
 
 /* Bit fields for 'phyREG_00_BMCR', the 'Basic Mode Control Register'. */
@@ -560,6 +562,13 @@ BaseType_t xPhyFixedValue( EthernetPhy_t * pxPhyObject,
                                PHY_DEVAD_MMD1,
                                phyREG_834_MMD1_PMA_CTRL_2,
                                uiT1Mode);
+
+            /* Enter autonomous mode */
+            vPhyIndirectWrite(pxPhyObject,
+                              xPhyAddress,
+                              PHY_DEVAD_MMD1F,
+                              phyREG_18B_AUTO_PHY,
+                              0x0042U);
         }
     }
 
